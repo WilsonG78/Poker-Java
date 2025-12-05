@@ -1,0 +1,15 @@
+package common;
+
+
+public record Card{
+    private Suit suit;
+    private Rank rank;
+
+
+    public Card(Suit s, Rank r){
+        this.suit = s;
+        this.rank = r;
+    }
+}
+
+
