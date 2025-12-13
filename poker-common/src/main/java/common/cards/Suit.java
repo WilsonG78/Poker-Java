@@ -1,25 +1,32 @@
 package common.cards;
 
 public enum Suit{
-    HEARTS(0),
-    DIAMONDS(1),
-    CLUBS(2),
-    SPADES(3);
+    HEARTS("H"),
+    DIAMONDS("D"),
+    CLUBS("C"),
+    SPADES("S");
 
-    private final int value;
+    private final String symbol;
 
-    Suit(int value){
-        this.value = value;
+    Suit(String s){
+        this.symbol = s;
     }
 
-    public int value(){
-        return value;
-    }
 
-    public Suit suitFromCode(int value){
+    public static Suit fromString(String sym){
         for (Suit s : values()){
-            if (s.value == value){ return s;}
+            if (s.symbol == sym){ return s;}
         }
-        throw new IllegalArgumentException("Inavlid value" + value);
+        throw new IllegalArgumentException("Inavlid value" + sym);
     }
+
+    public String getSymbol() {
+        return symbol;
+    }
+
+    @Override
+    public String toString(){
+        return symbol;
+    }
+
 }

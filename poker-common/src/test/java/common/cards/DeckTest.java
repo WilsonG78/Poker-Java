@@ -10,7 +10,7 @@ public class DeckTest {
 
     @BeforeEach
     void newDeck(){
-        this.deck = new Deck();
+        this.deck = new Deck(123);
     }
 
     @Test

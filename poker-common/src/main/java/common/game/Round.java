@@ -1,13 +1,11 @@
 package common.game;
 
 import common.players.Player;
-import lombok.AllArgsConstructor;
-import lombok.Data;
 
 import java.util.List;
 
-@Data
-@AllArgsConstructor
+
+
 public class Round {
     private PotManager potManager;
     private Player playerOnMove;
@@ -15,8 +13,8 @@ public class Round {
     private int ante;
     private List<Player> players;
 
-    public void startRound(List<Player> players){
-        for(Player p : players){
+    public void startRound(List<Player> playersInRound){
+        for(Player p : playersInRound){
             p.setPot(new Pot(p));
         }
 

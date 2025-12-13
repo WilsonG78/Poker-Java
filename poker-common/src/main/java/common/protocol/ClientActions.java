@@ -1,7 +1,8 @@
 package common.protocol;
 
 public enum ClientActions {
-    HELLO("HELLO"),CREATE("CREATE"),JOIN("JOIN"),LEAVE("LEAVE"),START("START"),BET("BET"),CALL("CALL"),CHECK("CHECK"),FOLD("FOLD"),DRAW("DRAW"),STATUS("STATUS"),QUIT("QUIT");
+    HELLO("HELLO"),CREATE("CREATE"),JOIN("JOIN"),LEAVE("LEAVE"),START("START"),BET("BET"),CALL("CALL"),CHECK("CHECK"),FOLD("FOLD"),DRAW("DRAW"),STATUS("STATUS"),QUIT("QUIT"),
+    PING("PING"), PONG("PONG"), REGISTER("REGISTER");
 
     private String value;
     ClientActions(String value){

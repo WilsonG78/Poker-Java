@@ -1,88 +1,115 @@
 package server;
 
-import common.protocol.PokerClient;
+import common.players.PlayerId;
+import common.protocol.ServerActions;
+import common.protocol.client.commands.HelloCommand;
+import common.protocol.server.commands.OkCommand;
+import lombok.extern.slf4j.Slf4j;
+import model.GameContext;
 
+import java.io.BufferedReader;
 import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
-import java.nio.channels.ServerSocketChannel;
-import java.nio.channels.SocketChannel;
-import java.util.HashMap;
-import java.util.Iterator;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
-public class PokerSocketServer{
+@Slf4j
+public class PokerSocketServer {
 
-    private ServerSocketChannel serverSocket;
-    private Selector selector;
-    private int numberOfGames = 0;
-    private int numberOfClients = 0;
-    private HashMap<Integer,PokerClient> clientIdToChannel;
+    private final int port;
+    private final int version = 1;
+    private final ExecutorService virtualThreadExecutor = Executors.newVirtualThreadPerTaskExecutor();
+    private ServerSocket serverSocket;
+    private int numberOfClients;
+    private  Map<Socket,PlayerId> socketPlayerIdMap;
+    private final GameContext gameContext = new GameContext();
 
-
-    public PokerSocketServer(int port) throws Exception{
-        selector = Selector.open();
-        serverSocket = ServerSocketChannel.open();
-        serverSocket.configureBlocking(false);
-        serverSocket.socket().bind(new InetSocketAddress(port));
-        serverSocket.register(selector, SelectionKey.OP_ACCEPT);
+    public PokerSocketServer(int port) {
+        this.port = port;
     }
-    /**
-     * This method starts Socket Server
-     * */
-    public void start() throws Exception{
 
-        while (true){
-            this.selector.select();
-
-            Iterator<SelectionKey> keys = this.selector.selectedKeys().iterator();
-
-            while (keys.hasNext()) {
-                SelectionKey key = keys.next();
-                keys.remove();
-
-                if (!key.isValid()) {
-                    continue;
+    public void start() {
+        try {
+            serverSocket = new ServerSocket(port);
+            log.info("Poker server started on port " + port);
+            while (!serverSocket.isClosed()) {
+                try {
+                    Socket clientSocket = serverSocket.accept();
+                    virtualThreadExecutor.submit(() -> handleClient(clientSocket));
+                } catch (IOException e) {
+                    if (serverSocket.isClosed()) {
+                        log.info("Server socket closed, stopping.");
+                    } else {
+                        log.error("Error accepting client connection", e);
+                    }
                 }
-
-                if (key.isAcceptable()) {
-                    this.handleAccept(key);
-                } else if (key.isReadable()) {
-
-                    this.handleRead(key);
-                }
-
             }
+        } catch (IOException e) {
+            log.error("Could not start server on port " + port, e);
+        } finally {
+            shutdown();
         }
     }
 
-    /**
-     *
-     * */
-    private void handleAccept(SelectionKey key) throws IOException {
-        ServerSocketChannel serverChannel = (ServerSocketChannel) key.channel();
-        SocketChannel clientChannel = serverChannel.accept();
+    private void handleClient(Socket clientSocket) {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+             PrintWriter writer = new PrintWriter(clientSocket.getOutputStream(), true)) {
 
-        if (clientChannel == null) return;
+            clientSocket.setSoTimeout(45000); // 45s timeout
 
-        clientChannel.configureBlocking(false);
 
-        clientChannel.register(this.selector, SelectionKey.OP_READ);
+            String message = reader.readLine();
 
-        createNewClient(clientChannel);
+            HelloCommand helloCommand = new HelloCommand();
+            helloCommand.parseFromString(message);
+            if(helloCommand.getVersion() == 1){
+                createNewPlayer(clientSocket);
+            }
+
+
+
+
+
+        } catch (IOException e) {
+            log.warn("Client disconnected or error: " + e.getMessage());
+        } catch (SecurityException se) {
+            log.warn("Security violation: " + se.getMessage());
+        }
     }
 
-    private void createNewClient(SocketChannel channel){
-        PokerClient pokerClient = new PokerClient(numberOfClients,channel);
-        clientIdToChannel.put(numberOfClients,pokerClient);
+    public void createNewPlayer(Socket clientSocket){
+        OkCommand cmd = new OkCommand(ServerActions.OK,"ADDED TO SERVER");
+        PlayerId newPlayerId = new PlayerId(numberOfClients);
         numberOfClients++;
+        socketPlayerIdMap.put(clientSocket,newPlayerId);
     }
 
-    private void handleRead(SelectionKey key){
-
+    public void shutdown() {
+        log.info("Shutting down server.");
+        try {
+            if (serverSocket != null && !serverSocket.isClosed()) {
+                serverSocket.close();
+            }
+        } catch (IOException e) {
+            log.error("Error closing server socket", e);
+        }
+        virtualThreadExecutor.shutdown();
+        try {
+            if (!virtualThreadExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
+                virtualThreadExecutor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            virtualThreadExecutor.shutdownNow();
+        }
     }
 
-    public void close() throws Exception{
-        serverSocket.close();
+    public static void main(String[] args) {
+        PokerSocketServer server = new PokerSocketServer(7777);
+        server.start();
     }
 }

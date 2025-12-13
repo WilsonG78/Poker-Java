@@ -1,6 +1,6 @@
 package common.game;
 
 public enum GameStateInfo {
-    LOBBY, ANTE, DEAL, BET1, DRAW, BET2,
+    LOBBY, ANTE, DEAL, BET_FIRST, DRAW, BET_SECOND,
     SHOWDOWN, PAYOUT, END
 }
